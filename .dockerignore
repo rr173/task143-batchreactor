@@ -1,0 +1,16 @@
+# Build artifacts / cache
+vendor/
+node_modules/
+dist/
+build/
+*.db
+*.db-*
+*.db-wal
+*.db-shm
+batchreactor
+/task143-batchreactor
+
+# Test/cache artifacts
+*.out
+*.test
+.DS_Store
