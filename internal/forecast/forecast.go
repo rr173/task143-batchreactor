@@ -178,7 +178,7 @@ func riskFor(in Input, res model.KineticsResult, f model.BatchForecast) (model.R
 	if res.StoesselClass >= 5 {
 		reasons = append(reasons, "Stoessel class 5 requires escalation")
 	}
-	if f.ThermalHeadroom < 0 && in.Recipe.ThermalLimit > 0 {
+	if f.ThermalHeadroom <= 0 && in.Recipe.ThermalLimit > 0 {
 		reasons = append(reasons, "predicted peak reaches the thermal limit")
 	}
 	if !math.IsInf(res.TMRSeconds, 1) && res.TMRSeconds > 0 && res.TMRSeconds < 8*3600 {

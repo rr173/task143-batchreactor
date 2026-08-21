@@ -122,7 +122,7 @@ func Verdict(r model.Recipe, peakTemp float64, class int) model.SafetyVerdict {
 		return model.VerdictRunaway
 	}
 	if r.ThermalLimit > 0 {
-		if peakTemp > r.ThermalLimit {
+		if peakTemp >= r.ThermalLimit {
 			return model.VerdictRunaway
 		}
 		if peakTemp >= r.ThermalLimit-10 {
