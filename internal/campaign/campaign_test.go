@@ -131,3 +131,43 @@ func TestCleaningSeverityDuration(t *testing.T) {
 		t.Error("heavy → 3600")
 	}
 }
+
+// TestPlanLightCleaningAdvanceStart asserts that a light product handoff
+// advances the reactor timeline — the second batch's PlannedStart must include
+// the 600s changeover, not promise an instant switch. This is the time
+// commitment the cleaning severity is supposed to carry.
+func TestPlanLightCleaningAdvanceStart(t *testing.T) {
+	in := PlanInput{
+		Items: []model.CampaignItem{
+			{CampaignID: "c", Seq: 1, RecipeID: "r1", ReactorID: "k1", BatchCount: 1},
+			{CampaignID: "c", Seq: 2, RecipeID: "r2", ReactorID: "k1", BatchCount: 1},
+		},
+		Recipes: map[string]model.Recipe{
+			"r1": rcp("A", 400),
+			"r2": rcp("B", 400),
+		},
+		Reactors: map[string]model.Reactor{"k1": vessel(500)},
+		Matrix: func(from, to string) model.CleaningSeverity {
+			if from == "A" && to == "B" {
+				return model.CleaningLight
+			}
+			return model.CleaningNone
+		},
+		StartAt: 1000,
+	}
+	plan, err := Plan(in)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if plan.Batches[1].CleaningBefore != 600 {
+		t.Fatalf("light handoff cleaning_before: got %.0f want 600", plan.Batches[1].CleaningBefore)
+	}
+	// Second batch must start after the first batch's duration AND the 600s gap.
+	wantStart := int64(1000) + int64(in.Recipes["r1"].Duration) + int64(model.CleaningLight.CleaningDuration())
+	if plan.Batches[1].PlannedStart != wantStart {
+		t.Fatalf("second batch planned_start: got %d want %d (duration + light cleaning)", plan.Batches[1].PlannedStart, wantStart)
+	}
+	if plan.Batches[0].PlannedStart != 1000 {
+		t.Fatalf("first batch planned_start: got %d want 1000", plan.Batches[0].PlannedStart)
+	}
+}

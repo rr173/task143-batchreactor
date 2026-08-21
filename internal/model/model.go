@@ -71,10 +71,15 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// The ladder is strictly monotonic — None (0) < Light (600) < Medium (1800) <
+// Heavy (3600) — so a non-zero severity always carries a non-zero changeover
+// cost. Treating Light as zero collapses it into None, which lets a product
+// handoff be scheduled as an instant switch and understates the reactor's true
+// time commitment against the process boundary.
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:
