@@ -1,0 +1,6 @@
+.private/
+vendor/
+*.db
+*.db-shm
+*.db-wal
+batchreactor
