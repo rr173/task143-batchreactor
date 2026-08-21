@@ -71,10 +71,14 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// Light cleaning is a real process step: a rinse/CIP cycle that the reactor
+// still has to spend before the next product can charge. Returning zero here
+// would erase that window from the plan, making a light-changeover campaign
+// read as back-to-back batches and overstate capacity.
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:

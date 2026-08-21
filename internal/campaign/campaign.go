@@ -84,10 +84,13 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 			var cleaningBefore float64
 			cleaningProduct := ""
 			if prevProduct != "" && prevProduct != r.Product {
-				sev := in.Matrix(prevProduct, r.Product)
-				_ = sev
-				cleaningBefore = 0
+				cleaningBefore = in.Matrix(prevProduct, r.Product).CleaningDuration()
 				cleaningProduct = prevProduct
+				// Reserve the cleaning window on the timeline so the next batch
+				// does not back up onto the previous run. Without this the plan
+				// reads as continuous handoff and overstates capacity even when
+				// the process still requires the changeover.
+				cursor += int64(cleaningBefore)
 			}
 			for b := 0; b < it.BatchCount; b++ {
 				seq++
