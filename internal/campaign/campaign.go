@@ -80,14 +80,18 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 				plan.Errors = append(plan.Errors, model.PlanError{Seq: it.Seq, RecipeID: it.RecipeID, Reactor: rc.Name, Reason: reactor.IncompatibilityReason(r, rc)})
 				continue
 			}
-			// Sequence-dependent cleaning (hard scheduling constraint #2).
+			// Sequence-dependent cleaning (hard scheduling constraint #2). A
+			// changeover between two different products reserves a cleaning
+			// hold whose duration comes from the contamination matrix; the hold
+			// is carried on the next batch's CleaningBefore and reserved in the
+			// timeline so the reactor is not free to charge the next batch
+			// until the cleaning step elapses.
 			var cleaningBefore float64
 			cleaningProduct := ""
 			if prevProduct != "" && prevProduct != r.Product {
-				sev := in.Matrix(prevProduct, r.Product)
-				_ = sev
-				cleaningBefore = 0
 				cleaningProduct = prevProduct
+				cleaningBefore = in.Matrix(prevProduct, r.Product).CleaningDuration()
+				cursor += int64(cleaningBefore)
 			}
 			for b := 0; b < it.BatchCount; b++ {
 				seq++
