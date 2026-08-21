@@ -71,10 +71,14 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// Light is a short rinse (600 s), medium a CIP cycle (1800 s), heavy a full
+// boil-out (3600 s); none needs no step at all. The non-zero durations are the
+// changeover interval the timeline must show when switching products, so a zero
+// return here would collapse the handoff into an instantaneous transition.
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:

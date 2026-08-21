@@ -73,7 +73,10 @@ func Windows(batches []model.Batch, expected map[string]int64, now int64) []Time
 
 // Gaps returns all successive gaps for each reactor. It does not hide
 // overlaps: a negative duration is critical planning evidence, while a zero
-// duration indicates a direct handoff from one batch to the next.
+// duration indicates a direct handoff from one batch to the next. The actual
+// idle time is the gap between the previous batch's end and the current batch's
+// start, so a deliberate changeover (e.g. a sequence-dependent cleaning step)
+// surfaces as a positive gap rather than being collapsed to zero.
 func Gaps(windows []TimelineWindow) []Gap {
 	if len(windows) < 2 {
 		return []Gap{}
@@ -86,7 +89,7 @@ func Gaps(windows []TimelineWindow) []Gap {
 			previous = cur
 			continue
 		}
-		out = append(out, Gap{ReactorID: cur.ReactorID, BeforeID: previous.BatchID, AfterID: cur.BatchID, Seconds: 0})
+		out = append(out, Gap{ReactorID: cur.ReactorID, BeforeID: previous.BatchID, AfterID: cur.BatchID, Seconds: cur.Start - previous.End})
 		if cur.End > previous.End {
 			previous = cur
 		}
