@@ -71,10 +71,12 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// Light is a non-zero changeover so a configured light-contamination risk still
+// reserves a cleaning window; medium/heavy scale up from there.
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:

@@ -81,13 +81,18 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 				continue
 			}
 			// Sequence-dependent cleaning (hard scheduling constraint #2).
+			// Assess on the previous scheduled batch's product (the actual
+			// immediately-preceding run on that reactor), so re-runs of the same
+			// product need no cleaning. The configured severity must translate
+			// into a reserved changeover window: CleaningBefore records it on the
+			// upcoming batch and the timeline cursor advances past it so the
+			// subsequent arrangement leaves a corresponding slot.
 			var cleaningBefore float64
 			cleaningProduct := ""
 			if prevProduct != "" && prevProduct != r.Product {
-				sev := in.Matrix(prevProduct, r.Product)
-				_ = sev
-				cleaningBefore = 0
+				cleaningBefore = in.Matrix(prevProduct, r.Product).CleaningDuration()
 				cleaningProduct = prevProduct
+				cursor += int64(cleaningBefore)
 			}
 			for b := 0; b < it.BatchCount; b++ {
 				seq++
