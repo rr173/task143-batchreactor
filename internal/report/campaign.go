@@ -128,7 +128,7 @@ func countVerdict(out *model.CampaignAnalytics, verdict model.SafetyVerdict) {
 	case model.VerdictSafe:
 		out.SafeCount++
 	case model.VerdictMarginal:
-		out.SafeCount++
+		out.MarginalCount++
 	case model.VerdictRunaway:
 		out.RunawayCount++
 	}

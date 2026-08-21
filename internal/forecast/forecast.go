@@ -187,7 +187,7 @@ func riskFor(in Input, res model.KineticsResult, f model.BatchForecast) (model.R
 	if len(reasons) > 0 {
 		return model.RiskCritical, reasons
 	}
-	if res.Verdict == model.VerdictSafe {
+	if res.Verdict == model.VerdictMarginal {
 		reasons = append(reasons, "thermal classification is marginal")
 	}
 	if f.ThermalHeadroom > 0 && f.ThermalHeadroom < 10 {

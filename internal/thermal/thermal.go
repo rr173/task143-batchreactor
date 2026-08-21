@@ -129,7 +129,10 @@ func Verdict(r model.Recipe, peakTemp float64, class int) model.SafetyVerdict {
 			return model.VerdictMarginal
 		}
 	}
-	if class > 4 {
+	// Class 4+ (150 K ≤ ΔT_ad < 200) is a marginal hazard even when the
+	// trajectory peak stays below the thermal limit: the adiabatic ceiling
+	// alone forces a caution. Class 5 is already handled above as runaway.
+	if class >= 4 {
 		return model.VerdictMarginal
 	}
 	return model.VerdictSafe
