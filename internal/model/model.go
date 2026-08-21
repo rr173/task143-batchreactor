@@ -71,10 +71,13 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// Light cleaning is a real changeover preparation, not a no-op: it must consume
+// time so the reactor is not scheduled onto the next product before the wash is
+// done. None alone skips the step (0 s).
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:
