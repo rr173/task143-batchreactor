@@ -81,13 +81,18 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 				continue
 			}
 			// Sequence-dependent cleaning (hard scheduling constraint #2).
+			// The cleaning step occupies the reactor between the previous run's
+			// product and this one, so its duration advances the timeline cursor
+			// — including the light rinse, which is a real changeover, not a
+			// no-op. Leaving it at zero would let the next batch switch onto the
+			// vessel prematurely.
 			var cleaningBefore float64
 			cleaningProduct := ""
 			if prevProduct != "" && prevProduct != r.Product {
 				sev := in.Matrix(prevProduct, r.Product)
-				_ = sev
-				cleaningBefore = 0
+				cleaningBefore = sev.CleaningDuration()
 				cleaningProduct = prevProduct
+				cursor += int64(cleaningBefore)
 			}
 			for b := 0; b < it.BatchCount; b++ {
 				seq++
