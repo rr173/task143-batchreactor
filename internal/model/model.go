@@ -13,22 +13,22 @@ type ReactorStatus string
 
 const (
 	ReactorAvailable   ReactorStatus = "available"
-	ReactorBusy         ReactorStatus = "busy"
-	ReactorMaintenance  ReactorStatus = "maintenance"
+	ReactorBusy        ReactorStatus = "busy"
+	ReactorMaintenance ReactorStatus = "maintenance"
 )
 
 // Reactor is a single batch reaction vessel.
 type Reactor struct {
-	ID                string        `json:"id"`
-	Name              string        `json:"name"`
-	Volume            float64       `json:"volume"`             // m³
-	HeatTransferU     float64       `json:"heat_transfer_u"`    // W/(m²·K)
-	HeatTransferArea  float64       `json:"heat_transfer_area"` // m²
-	MaxOperatingTemp  float64       `json:"max_operating_temp"` // K
-	MaxPressure       float64       `json:"max_pressure"`       // bar
-	Material          string        `json:"material"`
-	Status            ReactorStatus `json:"status"`
-	CreatedAt         int64         `json:"created_at"`
+	ID               string        `json:"id"`
+	Name             string        `json:"name"`
+	Volume           float64       `json:"volume"`             // m³
+	HeatTransferU    float64       `json:"heat_transfer_u"`    // W/(m²·K)
+	HeatTransferArea float64       `json:"heat_transfer_area"` // m²
+	MaxOperatingTemp float64       `json:"max_operating_temp"` // K
+	MaxPressure      float64       `json:"max_pressure"`       // bar
+	Material         string        `json:"material"`
+	Status           ReactorStatus `json:"status"`
+	CreatedAt        int64         `json:"created_at"`
 }
 
 // ReactionOrder is the kinetic order w.r.t. the limiting reactant A (1 or 2).
@@ -47,10 +47,10 @@ type Recipe struct {
 	Product       string        `json:"product"`
 	K0            float64       `json:"k0"`             // pre-exponential, 1/s
 	Ea            float64       `json:"ea"`             // J/mol
-	Order         ReactionOrder `json:"order"`         // 1 or 2
+	Order         ReactionOrder `json:"order"`          // 1 or 2
 	CA0           float64       `json:"ca0"`            // initial concentration, mol/m³
 	DeltaHrx      float64       `json:"delta_h_rx"`     // J/mol (negative = exothermic)
-	Rho           float64       `json:"rho"`           // kg/m³
+	Rho           float64       `json:"rho"`            // kg/m³
 	Cp            float64       `json:"cp"`             // J/(kg·K)
 	T0            float64       `json:"t0"`             // initial / process temperature, K
 	JacketTemp    float64       `json:"jacket_temp"`    // K
@@ -64,10 +64,10 @@ type Recipe struct {
 type CleaningSeverity int
 
 const (
-	CleaningNone     CleaningSeverity = 0
-	CleaningLight    CleaningSeverity = 1
-	CleaningMedium   CleaningSeverity = 2
-	CleaningHeavy    CleaningSeverity = 3
+	CleaningNone   CleaningSeverity = 0
+	CleaningLight  CleaningSeverity = 1
+	CleaningMedium CleaningSeverity = 2
+	CleaningHeavy  CleaningSeverity = 3
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
@@ -183,15 +183,15 @@ type Batch struct {
 type EventType string
 
 const (
-	EventQueued       EventType = "queued"
-	EventCharging     EventType = "charging"
-	EventReacting     EventType = "reacting"
-	EventCooling      EventType = "cooling"
-	EventDischarging  EventType = "discharging"
-	EventCleaning     EventType = "cleaning"
-	EventDone         EventType = "done"
-	EventFaulted      EventType = "faulted"
-	EventAborted      EventType = "aborted"
+	EventQueued      EventType = "queued"
+	EventCharging    EventType = "charging"
+	EventReacting    EventType = "reacting"
+	EventCooling     EventType = "cooling"
+	EventDischarging EventType = "discharging"
+	EventCleaning    EventType = "cleaning"
+	EventDone        EventType = "done"
+	EventFaulted     EventType = "faulted"
+	EventAborted     EventType = "aborted"
 )
 
 // BatchEvent is one append-only lifecycle record used for audit and recovery.
@@ -250,10 +250,10 @@ type CampaignPlan struct {
 
 // PlannedItem is a campaign item with its resolved schedule per reactor.
 type PlannedItem struct {
-	Seq        int     `json:"seq"`
-	RecipeID   string  `json:"recipe_id"`
-	ReactorID  string  `json:"reactor_id"`
-	BatchCount int     `json:"batch_count"`
+	Seq        int    `json:"seq"`
+	RecipeID   string `json:"recipe_id"`
+	ReactorID  string `json:"reactor_id"`
+	BatchCount int    `json:"batch_count"`
 }
 
 // PlannedBatch is one batch in the plan with its reactor-relative sequence,
@@ -274,4 +274,93 @@ type PlanError struct {
 	RecipeID string `json:"recipe_id"`
 	Reactor  string `json:"reactor_id"`
 	Reason   string `json:"reason"`
+}
+
+// RiskBand is the operator-facing severity used by forecasts and campaign
+// reports. It deliberately separates current lifecycle state from thermal
+// risk: a queued batch can already be critical because of its recipe.
+type RiskBand string
+
+const (
+	RiskNormal   RiskBand = "normal"
+	RiskWatch    RiskBand = "watch"
+	RiskCritical RiskBand = "critical"
+)
+
+// ForecastPhase describes which operational milestone a batch is expected to
+// reach next. It is derived from status and recipe duration, never persisted.
+type ForecastPhase string
+
+const (
+	ForecastWaiting   ForecastPhase = "waiting"
+	ForecastCharge    ForecastPhase = "charge"
+	ForecastReact     ForecastPhase = "react"
+	ForecastCool      ForecastPhase = "cool"
+	ForecastDischarge ForecastPhase = "discharge"
+	ForecastCleaning  ForecastPhase = "cleaning"
+	ForecastTerminal  ForecastPhase = "terminal"
+)
+
+// BatchForecast is a deterministic operations view used by the reactor desk.
+// Estimated timestamps are only planning aids: the authoritative timestamps
+// remain the lifecycle event stream on Batch.
+type BatchForecast struct {
+	BatchID         string        `json:"batch_id"`
+	ReactorID       string        `json:"reactor_id"`
+	RecipeID        string        `json:"recipe_id"`
+	Status          BatchStatus   `json:"status"`
+	Phase           ForecastPhase `json:"phase"`
+	Risk            RiskBand      `json:"risk"`
+	PlannedStart    int64         `json:"planned_start"`
+	EstimatedStart  int64         `json:"estimated_start"`
+	EstimatedFinish int64         `json:"estimated_finish"`
+	ScheduleSlip    int64         `json:"schedule_slip"`
+	ThermalHeadroom float64       `json:"thermal_headroom"`
+	ConversionGap   float64       `json:"conversion_gap"`
+	TMRSeconds      float64       `json:"tmr_seconds"`
+	NextAction      string        `json:"next_action"`
+	Reasons         []string      `json:"reasons"`
+}
+
+// ReactorLoad describes planned and live load for one vessel. Planned seconds
+// are accumulated from recipe durations; cleaning seconds are tracked
+// separately so a planner can identify avoidable changeover time.
+type ReactorLoad struct {
+	ReactorID         string        `json:"reactor_id"`
+	ReactorName       string        `json:"reactor_name"`
+	Status            ReactorStatus `json:"status"`
+	BatchCount        int           `json:"batch_count"`
+	ActiveCount       int           `json:"active_count"`
+	TerminalCount     int           `json:"terminal_count"`
+	FaultCount        int           `json:"fault_count"`
+	PlannedSeconds    float64       `json:"planned_seconds"`
+	CleaningSeconds   float64       `json:"cleaning_seconds"`
+	Utilization       float64       `json:"utilization"`
+	FirstPlannedStart int64         `json:"first_planned_start"`
+	LastPlannedFinish int64         `json:"last_planned_finish"`
+}
+
+// CampaignAnalytics is a read-only operational report assembled from campaign
+// items, batches, recipes, reactors and derived safety results. It is designed
+// to remain meaningful after a restart because every field is re-derived.
+type CampaignAnalytics struct {
+	CampaignID      string          `json:"campaign_id"`
+	CampaignName    string          `json:"campaign_name"`
+	CampaignStatus  CampaignStatus  `json:"campaign_status"`
+	GeneratedAt     int64           `json:"generated_at"`
+	BatchCount      int             `json:"batch_count"`
+	QueuedCount     int             `json:"queued_count"`
+	ActiveCount     int             `json:"active_count"`
+	DoneCount       int             `json:"done_count"`
+	FaultCount      int             `json:"fault_count"`
+	AbortedCount    int             `json:"aborted_count"`
+	SafeCount       int             `json:"safe_count"`
+	MarginalCount   int             `json:"marginal_count"`
+	RunawayCount    int             `json:"runaway_count"`
+	EarliestStart   int64           `json:"earliest_start"`
+	LatestFinish    int64           `json:"latest_finish"`
+	CriticalBatches []string        `json:"critical_batches"`
+	ReactorLoads    []ReactorLoad   `json:"reactor_loads"`
+	Forecasts       []BatchForecast `json:"forecasts"`
+	Warnings        []string        `json:"warnings"`
 }

@@ -46,6 +46,7 @@ func Run() error {
 		{"lifecycle-flow", smokeLifecycleFlow},
 		{"thermal-runaway-fault", smokeThermalRunawayFault},
 		{"conversion-gate", smokeConversionGate},
+		{"operations-analytics", smokeAnalytics},
 		{"frontend-page-served", smokeFrontend},
 	}
 	for i, c := range cases {

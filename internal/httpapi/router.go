@@ -56,6 +56,8 @@ func NewMux(svc Services, frontend fs.FS) http.Handler {
 	mux.HandleFunc("POST /api/campaigns/{id}/items", h.addCampaignItem)
 	mux.HandleFunc("POST /api/campaigns/{id}/plan", h.planCampaign)
 	mux.HandleFunc("POST /api/campaigns/{id}/start", h.startCampaign)
+	mux.HandleFunc("GET /api/campaigns/{id}/analytics", h.campaignAnalytics)
+	mux.HandleFunc("GET /api/campaigns/{id}/reactors/{reactorID}/load", h.reactorCampaignLoad)
 
 	// Batches.
 	mux.HandleFunc("GET /api/campaigns/{id}/batches", h.listBatches)
@@ -63,6 +65,7 @@ func NewMux(svc Services, frontend fs.FS) http.Handler {
 	mux.HandleFunc("POST /api/batches/{id}/advance", h.advanceBatch)
 	mux.HandleFunc("POST /api/batches/{id}/abort", h.abortBatch)
 	mux.HandleFunc("GET /api/batches/{id}/result", h.getBatchResult)
+	mux.HandleFunc("GET /api/batches/{id}/forecast", h.batchForecast)
 
 	// Reports.
 	mux.HandleFunc("GET /api/reactors/{id}/timeline", h.reactorTimeline)
