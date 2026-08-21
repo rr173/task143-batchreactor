@@ -54,6 +54,24 @@ func shortConversionRecipe() model.Recipe {
 	}
 }
 
+// marginalProximityRecipe peaks ~8 K below its thermal limit, inside the 10 K
+// "marginal" proximity band but above the 5 K runaway-proximity threshold. Its
+// high Ea keeps TMR ≫ 8 h so the forecast's TMR-critical rule does not fire,
+// isolating the proximity signal to the verdict/headroom path alone. MinConversion
+// is 0 so the reacting→cooling transition is not blocked by the conversion gate
+// and the persisted result is readable at cooling.
+//
+// ΔT_ad = 30000·2000/(1000·3000) = 20 K → Stoessel class 2 (far from class 4/5).
+// Peak ≈ 350.005 K, ThermalLimit = 358 K → headroom ≈ 7.995 K → marginal.
+// TMR(T0) = ρ·Cp·R·T0²/((-ΔH)·k(T0)·CA0·Ea) ≈ 7.3e5 s ≫ 8 h.
+func marginalProximityRecipe() model.Recipe {
+	return model.Recipe{
+		Name: "marginal epoxide", Product: "PM", K0: 2.1e7, Ea: 90000, Order: model.OrderFirst,
+		CA0: 2000, DeltaHrx: -30000, Rho: 1000, Cp: 3000, T0: 350.0, JacketTemp: 350.0,
+		ThermalLimit: 358.0, MinConversion: 0.0, Duration: 3600,
+	}
+}
+
 // safeReactor is a generously-cooled, generously-rated vessel compatible with
 // the exothermic and adiabatic recipes.
 func safeReactor() model.Reactor {

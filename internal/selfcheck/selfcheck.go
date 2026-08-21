@@ -46,6 +46,7 @@ func Run() error {
 		{"lifecycle-flow", smokeLifecycleFlow},
 		{"thermal-runaway-fault", smokeThermalRunawayFault},
 		{"conversion-gate", smokeConversionGate},
+		{"thermal-proximity-consistency", smokeThermalProximityConsistency},
 		{"operations-analytics", smokeAnalytics},
 		{"frontend-page-served", smokeFrontend},
 	}

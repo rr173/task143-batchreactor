@@ -116,7 +116,10 @@ func Classify(r model.Recipe, rc model.Reactor) (model.KineticsResult, error) {
 //	PeakTemp ≥ ThermalLimit-10 or class==4 → marginal
 //	else → safe
 //
-// A non-positive ThermalLimit disables the proximity rule (class alone decides).
+// The 10 K proximity band matches the forecast's thermal-headroom watch rule so a
+// batch approaching the decomposition onset is classified the same way by the
+// per-batch verdict, the forecast risk and the campaign overview. A non-positive
+// ThermalLimit disables the proximity rule (class alone decides).
 func Verdict(r model.Recipe, peakTemp float64, class int) model.SafetyVerdict {
 	if class == 5 {
 		return model.VerdictRunaway
@@ -125,7 +128,7 @@ func Verdict(r model.Recipe, peakTemp float64, class int) model.SafetyVerdict {
 		if peakTemp >= r.ThermalLimit {
 			return model.VerdictRunaway
 		}
-		if peakTemp >= r.ThermalLimit-5 {
+		if peakTemp >= r.ThermalLimit-10 {
 			return model.VerdictMarginal
 		}
 	}
