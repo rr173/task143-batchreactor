@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>间歇反应釜动力学与热安全引擎</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>间歇反应釜动力学与热安全引擎</h1>
+  <p class="tag">Batch Reactor Kinetics &amp; Thermal Runaway Safety</p>
+</header>
+<nav class="tabs">
+  <button data-tab="reactors" class="active">反应釜</button>
+  <button data-tab="recipes">配方</button>
+  <button data-tab="cleaning">清洗矩阵</button>
+  <button data-tab="simulate">动力学模拟</button>
+  <button data-tab="campaigns">活动与批次</button>
+</nav>
+<main>
+  <section id="tab-reactors" class="panel active">
+    <h2>反应釜</h2>
+    <form id="reactor-form">
+      <input name="name" placeholder="名称 R-1" required>
+      <input name="volume" type="number" step="any" placeholder="体积 m³" required>
+      <input name="heat_transfer_u" type="number" step="any" placeholder="U W/(m²·K)" required>
+      <input name="heat_transfer_area" type="number" step="any" placeholder="面积 m²" required>
+      <input name="max_operating_temp" type="number" step="any" placeholder="最高许用温度 K" required>
+      <input name="max_pressure" type="number" step="any" placeholder="最大压力 bar">
+      <input name="material" placeholder="材质 SS316L">
+      <button type="submit">创建反应釜</button>
+    </form>
+    <table id="reactor-table"><thead><tr><th>ID</th><th>名称</th><th>体积m³</th><th>U</th><th>面积m²</th><th>最高温度K</th><th>状态</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section id="tab-recipes" class="panel">
+    <h2>配方</h2>
+    <form id="recipe-form">
+      <input name="name" placeholder="配方名" required>
+      <input name="product" placeholder="产品代号" required>
+      <input name="k0" type="number" step="any" placeholder="k0 (1/s)" required>
+      <input name="ea" type="number" step="any" placeholder="Ea (J/mol)" required>
+      <label>级数 <select name="order"><option value="1">1</option><option value="2">2</option></select></label>
+      <input name="ca0" type="number" step="any" placeholder="CA0 (mol/m³)" required>
+      <input name="delta_h_rx" type="number" step="any" placeholder="ΔH_rx (J/mol, 负=放热)" required>
+      <input name="rho" type="number" step="any" placeholder="ρ (kg/m³)" required>
+      <input name="cp" type="number" step="any" placeholder="Cp (J/kg·K)" required>
+      <input name="t0" type="number" step="any" placeholder="T0 (K)" required>
+      <input name="jacket_temp" type="number" step="any" placeholder="夹套温度 (K)" required>
+      <input name="thermal_limit" type="number" step="any" placeholder="热分解门槛 (K)">
+      <input name="min_conversion" type="number" step="any" min="0" max="1" placeholder="最小转化率 0-1">
+      <input name="duration" type="number" step="any" placeholder="目标时长 (s)" required>
+      <button type="submit">创建配方</button>
+    </form>
+    <table id="recipe-table"><thead><tr><th>ID</th><th>名称</th><th>产品</th><th>k0</th><th>Ea</th><th>级数</th><th>ΔT_ad* / 安全</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section id="tab-cleaning" class="panel">
+    <h2>交叉污染清洗矩阵</h2>
+    <form id="cleaning-form">
+      <input name="from_product" placeholder="上游产品" required>
+      <input name="to_product" placeholder="下游产品" required>
+      <label>严重度 <select name="severity"><option value="0">0 无</option><option value="1">1 轻</option><option value="2">2 中</option><option value="3">3 重</option></select></label>
+      <button type="submit">设置</button>
+    </form>
+    <table id="cleaning-table"><thead><tr><th>上游</th><th>下游</th><th>严重度</th><th>清洗时长s</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section id="tab-simulate" class="panel">
+    <h2>动力学模拟 (投料前热安全评估)</h2>
+    <form id="simulate-form">
+      <label>配方 <select name="recipe_id" required></select></label>
+      <label>反应釜 <select name="reactor_id" required></select></label>
+      <button type="submit">运行模拟</button>
+    </form>
+    <div id="simulate-result" class="result-box"></div>
+  </section>
+
+  <section id="tab-campaigns" class="panel">
+    <h2>活动与批次</h2>
+    <form id="campaign-form">
+      <input name="name" placeholder="活动名称" required>
+      <button type="submit">创建活动</button>
+    </form>
+    <div id="campaign-list"></div>
+    <div id="campaign-detail" class="result-box"></div>
+    <form id="item-form" class="hidden">
+      <label>配方 <select name="recipe_id" required></select></label>
+      <label>反应釜 <select name="reactor_id" required></select></label>
+      <input name="batch_count" type="number" min="1" value="1" placeholder="批数">
+      <button type="submit">加入活动项</button>
+    </form>
+    <div class="actions">
+      <button id="plan-btn">排程</button>
+      <button id="start-btn">起动</button>
+      <button id="report-btn">综合报告</button>
+    </div>
+    <div id="batch-list"></div>
+    <div id="report-box" class="result-box"></div>
+  </section>
+</main>
+<footer><small>task143-batchreactor · SQLite · RK4 kinetics · Stoessel/TMR thermal safety</small></footer>
+<script src="app.js"></script>
+</body>
+</html>
