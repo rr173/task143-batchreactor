@@ -51,6 +51,18 @@ func TestConversionGateAllowsSpec(t *testing.T) {
 	}
 }
 
+func TestConversionGateAllowsExactSpec(t *testing.T) {
+	// A batch whose conversion lands exactly on MinConversion meets the release
+	// spec and must be allowed to proceed to cleaning. The gate must not turn
+	// the equality case into a block.
+	b := model.Batch{Status: model.BatchDischarging, Conversion: 0.80}
+	tc := &TransitionContext{Result: &model.KineticsResult{Conversion: 0.80, Verdict: model.VerdictSafe}, MinConversion: 0.80}
+	got, err := NextStatus(b, model.BatchCleaning, tc)
+	if err != nil || got != model.BatchCleaning {
+		t.Fatalf("conversion exactly at spec must allow cleaning: got %s err %v", got, err)
+	}
+}
+
 func TestConversionGateFallsBackToBatchConversion(t *testing.T) {
 	// No recomputed result (e.g. advancing discharging after a restart that
 	// didn't re-run the reacting guard): the gate uses the persisted batch

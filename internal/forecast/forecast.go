@@ -161,10 +161,13 @@ func headroom(recipe model.Recipe, peak float64) float64 {
 }
 
 func conversionGap(recipe model.Recipe, actual float64) float64 {
-	if recipe.MinConversion < actual {
-		return 0
+	// A gap exists only when conversion is strictly short of the release spec.
+	// Meeting the spec exactly (actual == MinConversion) is a pass, not a gap,
+	// so a batch that lands right on the spec is not flagged as a quality short.
+	if actual < recipe.MinConversion {
+		return recipe.MinConversion - actual
 	}
-	return recipe.MinConversion - actual
+	return 0
 }
 
 func riskFor(in Input, res model.KineticsResult, f model.BatchForecast) (model.RiskBand, []string) {

@@ -95,7 +95,11 @@ func NextStatus(b model.Batch, target model.BatchStatus, tc *TransitionContext) 
 		if tc != nil && tc.Result != nil {
 			conv = tc.Result.Conversion
 		}
-		if conv <= tc.MinConversion {
+		// Product at or above the spec proceeds to cleaning/done; only strictly
+		// short conversion is held. The gate treats meeting the spec exactly as
+		// a pass so a batch that lands right on MinConversion is released rather
+		// than blocked at the discharge→cleaning boundary.
+		if conv < tc.MinConversion {
 			return b.Status, fmt.Errorf("%w: conversion %.4f below spec %.4f", store.ErrLowConversion, conv, tc.MinConversion)
 		}
 		return model.BatchCleaning, nil
