@@ -71,10 +71,13 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// None needs no cleaning; light is a quick rinse (600 s) while heavy requires a
+// full decontamination (3600 s). A non-zero duration guarantees the reactor
+// timeline reserves the cleaning window before a product changeover.
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:
