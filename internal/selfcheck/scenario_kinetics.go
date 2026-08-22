@@ -8,7 +8,6 @@ import (
 	"task143-batchreactor/internal/clock"
 	"task143-batchreactor/internal/model"
 	"task143-batchreactor/internal/thermal"
-	"task143-batchreactor/internal/units"
 )
 
 // smokeKineticsSimulate asserts the dry-run simulate endpoint returns a
@@ -159,5 +158,3 @@ func approxEq(a, b, absTol, relTol float64) bool {
 	}
 	return math.Abs(a-b)/denom <= relTol
 }
-
-var _ = units.DefaultDt // keep import used even if future scenarios drop it

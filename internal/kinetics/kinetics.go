@@ -97,14 +97,18 @@ func ArrheniusRate(k0, ea, tKelvin float64) float64 {
 
 // Integrate runs the coupled ODE from t=0 to t=duration (or until the reactant
 // is exhausted or the trajectory hits the hard temperature ceiling). dt<=0
-// falls back to units.DefaultDt. isothermal pins T to T0 (only dCA/dt is
-// integrated, heat balance reported for diagnostics).
+// falls back to units.DefaultDt so every call site — the explicit fallback
+// here, thermal.Classify and any caller passing 0 — resolves to the same
+// default step. Keeping that resolution identical across entry points is what
+// makes the step count and the resulting thermal verdict reproducible
+// regardless of which path reaches the integrator. isothermal pins T to T0
+// (only dCA/dt is integrated, heat balance reported for diagnostics).
 func Integrate(r model.Recipe, rc model.Reactor, duration, dt float64) (KineticsOutput, error) {
 	if duration <= 0 {
 		duration = r.Duration
 	}
 	if dt <= 0 {
-		dt = units.DefaultDt * 2
+		dt = units.DefaultDt
 	}
 	if r.CA0 <= 0 || r.Rho <= 0 || r.Cp <= 0 || rc.Volume <= 0 {
 		return KineticsOutput{}, ErrBadInput
@@ -188,14 +192,14 @@ func Integrate(r model.Recipe, rc model.Reactor, duration, dt float64) (Kinetics
 		conv = 1
 	}
 	return KineticsOutput{
-		Conversion:  conv,
-		PeakTemp:    peak,
-		FinalTemp:    s.T,
-		Duration:     s.Time,
-		QGenMax:      qGenMax,
-		QRemAtPeak:   qRemAtPeak,
-		Steps:        steps,
-		Isothermal:   isothermal,
+		Conversion: conv,
+		PeakTemp:   peak,
+		FinalTemp:  s.T,
+		Duration:   s.Time,
+		QGenMax:    qGenMax,
+		QRemAtPeak: qRemAtPeak,
+		Steps:      steps,
+		Isothermal: isothermal,
 	}, nil
 }
 

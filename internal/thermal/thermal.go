@@ -87,7 +87,7 @@ func Classify(r model.Recipe, rc model.Reactor) (model.KineticsResult, error) {
 	class := StoesselClass(dtAd)
 	tmr := TMR(r, r.T0)
 
-	out, err := kinetics.Integrate(r, rc, r.Duration, units.DefaultDt*2)
+	out, err := kinetics.Integrate(r, rc, r.Duration, units.DefaultDt)
 	if err != nil {
 		return model.KineticsResult{}, err
 	}
