@@ -81,12 +81,14 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 				continue
 			}
 			// Sequence-dependent cleaning (hard scheduling constraint #2).
+			// Assessed on the immediately preceding batch's product; the
+			// duration comes from the contamination severity so the
+			// changeover time is preserved in the plan (and thus in the
+			// reactor timeline), not silently dropped on product switch.
 			var cleaningBefore float64
 			cleaningProduct := ""
 			if prevProduct != "" && prevProduct != r.Product {
-				sev := in.Matrix(prevProduct, r.Product)
-				_ = sev
-				cleaningBefore = 0
+				cleaningBefore = in.Matrix(prevProduct, r.Product).CleaningDuration()
 				cleaningProduct = prevProduct
 			}
 			for b := 0; b < it.BatchCount; b++ {
