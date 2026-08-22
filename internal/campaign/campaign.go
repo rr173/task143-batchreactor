@@ -81,24 +81,28 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 				continue
 			}
 			// Sequence-dependent cleaning (hard scheduling constraint #2).
+			// The cleaning window is reserved in the visible cadence: it pushes this
+			// batch's PlannedStart back by the cleaning duration so the floor sees a
+			// real changeover gap, instead of being folded to zero and handing the
+			// reactor straight from one product to the next with no preparation time.
 			var cleaningBefore float64
 			cleaningProduct := ""
 			if prevProduct != "" && prevProduct != r.Product {
-				sev := in.Matrix(prevProduct, r.Product)
-				_ = sev
-				cleaningBefore = 0
+				cleaningBefore = in.Matrix(prevProduct, r.Product).CleaningDuration()
 				cleaningProduct = prevProduct
 			}
 			for b := 0; b < it.BatchCount; b++ {
 				seq++
 				plan.Batches = append(plan.Batches, model.PlannedBatch{
 					ReactorID: rid, RecipeID: it.RecipeID, Seq: seq,
-					PlannedStart: cursor, CleaningBefore: cleaningBefore, CleaningProduct: cleaningProduct,
+					PlannedStart: cursor + int64(cleaningBefore), CleaningBefore: cleaningBefore, CleaningProduct: cleaningProduct,
 				})
+				// Advance past this batch's run; its cleaning already moved the
+				// cursor window start forward, so only the run duration remains.
+				cursor = cursor + int64(cleaningBefore) + int64(r.Duration)
 				// Subsequent batches of the SAME product need no cleaning.
 				cleaningBefore = 0
 				cleaningProduct = ""
-				cursor = nextCursor(cursor, r)
 			}
 			prevProduct = r.Product
 			plan.Items = append(plan.Items, model.PlannedItem{
@@ -114,11 +118,4 @@ func campaignIDOf(items []model.CampaignItem) string {
 		return it.CampaignID
 	}
 	return ""
-}
-
-// nextCursor advances the reactor timeline by the recipe's nominal duration.
-// Real batch duration is set during reacting; the plan only needs an ordering
-// estimate for planned-start sequencing within a reactor.
-func nextCursor(cur int64, r model.Recipe) int64 {
-	return cur + int64(r.Duration)
 }

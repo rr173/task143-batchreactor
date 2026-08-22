@@ -71,10 +71,14 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// Light cleaning is not free: it is the on-site rinse/rinse-and-check that must
+// be reserved in the visible cadence so the floor has preparation time before
+// the next product charges. Folding it to zero would let the schedule hand a
+// reactor straight from one product to the next with no changeover window.
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:
