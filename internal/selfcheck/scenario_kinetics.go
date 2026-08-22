@@ -112,8 +112,13 @@ func smokeSequenceCleaning(srv *httptest.Server, clk *clock.Fake) error {
 	if err != nil {
 		return err
 	}
-	// Contamination P1→P2 = medium (1800s).
+	// Contamination P1→P2 = medium (1800s), P2→P1 = light (600s). The light
+	// tier is the one that used to be silently dropped to zero, so asserting it
+	// here guards the mandatory changeover wait across every severity.
 	if err := mustDo(srv, "PUT", "/api/cleaning-matrix/P1/P2", map[string]any{"severity": 2}, nil); err != nil {
+		return err
+	}
+	if err := mustDo(srv, "PUT", "/api/cleaning-matrix/P2/P1", map[string]any{"severity": 1}, nil); err != nil {
 		return err
 	}
 	cid, err := createCampaign(srv, "cleaning-campaign")
@@ -128,19 +133,38 @@ func smokeSequenceCleaning(srv *httptest.Server, clk *clock.Fake) error {
 		map[string]any{"recipe_id": fidB, "reactor_id": rid, "batch_count": 1}, nil); err != nil {
 		return err
 	}
+	// A third item returns to P1, exercising the P2→P1 light (600s) changeover.
+	if err := mustDo(srv, "POST", fmt.Sprintf("/api/campaigns/%s/items", cid),
+		map[string]any{"recipe_id": fidA, "reactor_id": rid, "batch_count": 1}, nil); err != nil {
+		return err
+	}
 	var plan model.CampaignPlan
 	if err := mustDo(srv, "POST", fmt.Sprintf("/api/campaigns/%s/plan", cid), nil, &plan); err != nil {
 		return err
 	}
-	if len(plan.Batches) != 2 {
-		return fmt.Errorf("expected 2 planned batches, got %d", len(plan.Batches))
+	if len(plan.Batches) != 3 {
+		return fmt.Errorf("expected 3 planned batches, got %d", len(plan.Batches))
 	}
-	// Second batch must have a non-zero cleaning_before (1800s).
+	// Second batch must have a non-zero cleaning_before (medium, 1800s).
 	if plan.Batches[1].CleaningBefore != 1800 {
 		return fmt.Errorf("expected cleaning_before=1800 between P1→P2, got %.0f", plan.Batches[1].CleaningBefore)
 	}
+	// Third batch returns to P1 across the light (600s) changeover.
+	if plan.Batches[2].CleaningBefore != 600 {
+		return fmt.Errorf("expected cleaning_before=600 between P2→P1, got %.0f", plan.Batches[2].CleaningBefore)
+	}
 	if plan.Batches[0].CleaningBefore != 0 {
 		return fmt.Errorf("first batch must have no cleaning_before, got %.0f", plan.Batches[0].CleaningBefore)
+	}
+	// The cleaning wait must advance the timeline cursor, not just decorate the
+	// batch: batch 3's planned start = batch 1 start + 2×duration + 1800 + 600.
+	gap := plan.Batches[1].PlannedStart - (plan.Batches[0].PlannedStart + 3600)
+	if gap != 1800 {
+		return fmt.Errorf("P1→P2 changeover did not advance the plan cursor: gap=%d want 1800", gap)
+	}
+	tail := plan.Batches[2].PlannedStart - (plan.Batches[1].PlannedStart + 3600)
+	if tail != 600 {
+		return fmt.Errorf("P2→P1 light changeover did not advance the plan cursor: tail=%d want 600", tail)
 	}
 	return nil
 }

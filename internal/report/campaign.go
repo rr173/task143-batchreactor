@@ -8,13 +8,17 @@ import (
 
 // Input is the normalized read snapshot for a campaign report. Maps make it
 // explicit that recipe/reactor/result lookup belongs to the report boundary,
-// not to hidden database calls inside aggregation helpers.
+// not to hidden database calls inside aggregation helpers. Cleaning is the
+// mandatory changeover wait (seconds) preceding each batch, keyed by batch id;
+// the report surfaces it as ReactorLoad.CleaningSeconds so a planner can tell
+// avoidable changeover time apart from productive time.
 type Input struct {
 	Campaign  model.Campaign
 	Batches   []model.Batch
 	Recipes   map[string]model.Recipe
 	Reactors  map[string]model.Reactor
 	Forecasts []model.BatchForecast
+	Cleaning  map[string]float64
 	Now       int64
 }
 
@@ -51,6 +55,9 @@ func Build(in Input) model.CampaignAnalytics {
 			expected[b.ID] = int64(d)
 		} else {
 			out.Warnings = append(out.Warnings, "batch "+b.ID+" references a missing recipe")
+		}
+		if c, ok := in.Cleaning[b.ID]; ok && c > 0 {
+			load.CleaningSeconds += c
 		}
 	}
 	for _, f := range out.Forecasts {

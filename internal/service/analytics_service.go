@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 
 	"task143-batchreactor/internal/forecast"
 	"task143-batchreactor/internal/model"
@@ -28,8 +29,9 @@ func (s *Services) CampaignAnalytics(ctx context.Context, campaignID string) (*m
 	if err != nil {
 		return nil, err
 	}
-	forecasts := forecast.BuildAll(batches, recipes, reactors, results, s.now())
-	analytics := report.Build(report.Input{Campaign: *campaign, Batches: batches, Recipes: recipes, Reactors: reactors, Forecasts: forecasts, Now: s.now()})
+	cleaning := s.cleaningSeconds(ctx, batches, recipes)
+	forecasts := forecast.BuildAll(batches, recipes, reactors, results, cleaning, s.now())
+	analytics := report.Build(report.Input{Campaign: *campaign, Batches: batches, Recipes: recipes, Reactors: reactors, Forecasts: forecasts, Cleaning: cleaning, Now: s.now()})
 	analytics.Warnings = append(analytics.Warnings, warnings...)
 	return &analytics, nil
 }
@@ -54,7 +56,24 @@ func (s *Services) BatchForecast(ctx context.Context, batchID string) (*model.Ba
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return nil, err
 	}
-	returnPtr := forecast.Build(forecast.Input{Batch: *b, Recipe: *r, Reactor: *rc, Result: result, Now: s.now()})
+	// The cleaning changeover depends on the immediately preceding batch's
+	// product on the same reactor, so load the whole reactor sequence to derive
+	// it (consistent with how planning and the campaign report compute it).
+	reactorBatches, err := s.st.ListBatchesByReactor(ctx, b.ReactorID)
+	if err != nil {
+		return nil, err
+	}
+	reactorRecipes := map[string]model.Recipe{b.RecipeID: *r}
+	for _, rb := range reactorBatches {
+		if _, ok := reactorRecipes[rb.RecipeID]; ok {
+			continue
+		}
+		if rr, err := s.st.GetRecipe(ctx, rb.RecipeID); err == nil {
+			reactorRecipes[rb.RecipeID] = *rr
+		}
+	}
+	cleaning := s.cleaningSeconds(ctx, reactorBatches, reactorRecipes)
+	returnPtr := forecast.Build(forecast.Input{Batch: *b, Recipe: *r, Reactor: *rc, Result: result, CleaningSeconds: cleaning[b.ID], Now: s.now()})
 	return &returnPtr, nil
 }
 
@@ -121,4 +140,36 @@ func (s *Services) analyticsInputs(ctx context.Context, batches []model.Batch) (
 		}
 	}
 	return recipes, reactors, results, warnings, nil
+}
+
+// cleaningSeconds derives each batch's mandatory changeover wait (seconds) from
+// the stored contamination matrix. It mirrors campaign.Plan's rule: within a
+// reactor, ordered by seq, a batch whose product differs from the immediately
+// preceding batch's product waits the severity-derived cleaning time; same
+// product or the first batch on a reactor needs none. The result is keyed by
+// batch id so forecast.BuildAll can attach the right wait to each forecast. A
+// missing recipe is treated as no cleaning rather than dropping the batch.
+func (s *Services) cleaningSeconds(ctx context.Context, batches []model.Batch, recipes map[string]model.Recipe) map[string]float64 {
+	byReactor := map[string][]model.Batch{}
+	for _, b := range batches {
+		byReactor[b.ReactorID] = append(byReactor[b.ReactorID], b)
+	}
+	out := make(map[string]float64, len(batches))
+	lookup := s.matrixLookup(ctx)
+	for _, group := range byReactor {
+		sort.Slice(group, func(i, j int) bool { return group[i].Seq < group[j].Seq })
+		var prevProduct string
+		for _, b := range group {
+			cur, ok := recipes[b.RecipeID]
+			if !ok || prevProduct == "" || prevProduct == cur.Product {
+				out[b.ID] = 0
+			} else {
+				out[b.ID] = lookup(prevProduct, cur.Product).CleaningDuration()
+			}
+			if ok {
+				prevProduct = cur.Product
+			}
+		}
+	}
+	return out
 }

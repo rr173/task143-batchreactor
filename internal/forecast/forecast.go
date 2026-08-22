@@ -15,12 +15,19 @@ import (
 // Input is the complete read snapshot needed to forecast one batch. Result may
 // be nil before a batch leaves the reacting stage; in that case the recipe's
 // deterministic thermal classification still supplies a conservative preview.
+//
+// CleaningSeconds is the mandatory changeover wait that precedes this batch on
+// its reactor (zero for a first run or a same-product repeat). It is derived by
+// the caller from the contamination matrix, so the forecast stays a pure
+// function of stored inputs and reproduces identically on restart. It is only
+// consulted while a batch is in the cleaning phase.
 type Input struct {
-	Batch   model.Batch
-	Recipe  model.Recipe
-	Reactor model.Reactor
-	Result  *model.SafetyResult
-	Now     int64
+	Batch           model.Batch
+	Recipe          model.Recipe
+	Reactor         model.Reactor
+	Result          *model.SafetyResult
+	CleaningSeconds float64
+	Now             int64
 }
 
 // Build returns a single operational forecast. The calculation never claims a
@@ -49,7 +56,11 @@ func Build(in Input) model.BatchForecast {
 // used for recipes and reactors because a campaign frequently reuses both; a
 // missing reference is represented as a critical forecast rather than causing
 // all other batches to disappear from the operations report.
-func BuildAll(batches []model.Batch, recipes map[string]model.Recipe, reactors map[string]model.Reactor, results map[string]model.SafetyResult, now int64) []model.BatchForecast {
+//
+// cleaning is keyed by batch ID and holds each batch's mandatory changeover
+// wait (seconds). It is derived by the caller from the contamination matrix,
+// so BuildAll stays a pure function of stored inputs.
+func BuildAll(batches []model.Batch, recipes map[string]model.Recipe, reactors map[string]model.Reactor, results map[string]model.SafetyResult, cleaning map[string]float64, now int64) []model.BatchForecast {
 	out := make([]model.BatchForecast, 0, len(batches))
 	for _, b := range batches {
 		r, recipeOK := recipes[b.RecipeID]
@@ -64,7 +75,7 @@ func BuildAll(batches []model.Batch, recipes map[string]model.Recipe, reactors m
 			copy := v
 			result = &copy
 		}
-		out = append(out, Build(Input{Batch: b, Recipe: r, Reactor: rc, Result: result, Now: now}))
+		out = append(out, Build(Input{Batch: b, Recipe: r, Reactor: rc, Result: result, CleaningSeconds: cleaning[b.ID], Now: now}))
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].ReactorID != out[j].ReactorID {
@@ -140,7 +151,14 @@ func estimatedFinish(in Input, phase model.ForecastPhase) int64 {
 	case model.ForecastDischarge:
 		return max64(in.Now, start+duration) + 60
 	case model.ForecastCleaning:
-		return max64(in.Now, start) + 600
+		// The remaining cleaning wait is the severity-derived changeover for
+		// this batch, not a fixed light-rinse guess — medium (1800s) and heavy
+		// (3600s) switches would otherwise be understated by the forecast.
+		cleaning := int64(math.Ceil(in.CleaningSeconds))
+		if cleaning < 1 {
+			cleaning = 1
+		}
+		return max64(in.Now, start) + cleaning
 	default:
 		return b.EndedAt
 	}

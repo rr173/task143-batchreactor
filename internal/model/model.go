@@ -71,10 +71,14 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// None needs no cleaning; light is a short rinse, medium a full wash, heavy a
+// validated deep clean. Every non-none severity is a mandatory changeover wait —
+// treating light as zero silently drops the safety switch time, so the
+// scheduling cursor and the operational forecast both understate it.
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:
