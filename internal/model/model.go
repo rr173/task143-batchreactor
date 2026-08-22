@@ -71,10 +71,13 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// Light is a real changeover step, not a no-op: returning 0 would make the
+// required light cleaning vanish from the schedule and the timeline, so
+// back-to-back different products would look like a direct handoff.
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:

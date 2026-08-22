@@ -86,7 +86,7 @@ func Gaps(windows []TimelineWindow) []Gap {
 			previous = cur
 			continue
 		}
-		out = append(out, Gap{ReactorID: cur.ReactorID, BeforeID: previous.BatchID, AfterID: cur.BatchID, Seconds: 0})
+		out = append(out, Gap{ReactorID: cur.ReactorID, BeforeID: previous.BatchID, AfterID: cur.BatchID, Seconds: cur.Start - previous.End})
 		if cur.End > previous.End {
 			previous = cur
 		}

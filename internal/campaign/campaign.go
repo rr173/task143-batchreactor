@@ -85,12 +85,16 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 			cleaningProduct := ""
 			if prevProduct != "" && prevProduct != r.Product {
 				sev := in.Matrix(prevProduct, r.Product)
-				_ = sev
-				cleaningBefore = 0
+				cleaningBefore = sev.CleaningDuration()
 				cleaningProduct = prevProduct
 			}
 			for b := 0; b < it.BatchCount; b++ {
 				seq++
+				// The cleaning step occupies the gap before this batch's start,
+				// so its duration must advance the cursor. Otherwise the plan
+				// would schedule the batch to start when cleaning begins and the
+				// timeline would read it as a direct, no-wait handoff.
+				cursor += int64(cleaningBefore)
 				plan.Batches = append(plan.Batches, model.PlannedBatch{
 					ReactorID: rid, RecipeID: it.RecipeID, Seq: seq,
 					PlannedStart: cursor, CleaningBefore: cleaningBefore, CleaningProduct: cleaningProduct,

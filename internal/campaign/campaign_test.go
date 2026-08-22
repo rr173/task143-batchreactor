@@ -131,3 +131,62 @@ func TestCleaningSeverityDuration(t *testing.T) {
 		t.Error("heavy → 3600")
 	}
 }
+
+// TestPlanLightCleaningVisible guards against the light-cleaning regression:
+// a light (600s) changeover between two products must be recorded on the
+// second batch AND advance its planned start by the cleaning duration. If the
+// start is not advanced, the running view (timeline/forecast) collapses the
+// gap and the batches look like a no-wait switch — the exact defect this
+// regression test pins.
+func TestPlanLightCleaningVisible(t *testing.T) {
+	const dur = float64(3600) // distinct recipe duration so offsets are unambiguous
+	recipe := func(product string) model.Recipe {
+		r := rcp(product, 400)
+		r.Duration = dur
+		return r
+	}
+	in := PlanInput{
+		Items: []model.CampaignItem{
+			{CampaignID: "c", Seq: 1, RecipeID: "r1", ReactorID: "k1", BatchCount: 1},
+			{CampaignID: "c", Seq: 2, RecipeID: "r2", ReactorID: "k1", BatchCount: 1},
+		},
+		Recipes: map[string]model.Recipe{
+			"r1": recipe("A"),
+			"r2": recipe("B"),
+		},
+		Reactors: map[string]model.Reactor{"k1": vessel(500)},
+		Matrix: func(from, to string) model.CleaningSeverity {
+			if from == "A" && to == "B" {
+				return model.CleaningLight
+			}
+			return model.CleaningNone
+		},
+		StartAt: 1000,
+	}
+	plan, err := Plan(in)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if len(plan.Batches) != 2 {
+		t.Fatalf("expected 2 batches, got %d", len(plan.Batches))
+	}
+	// Light cleaning is a real changeover step: it must be recorded, not 0.
+	if plan.Batches[1].CleaningBefore != model.CleaningLight.CleaningDuration() {
+		t.Fatalf("light cleaning must be visible on the second batch: got %.0f want %.0f",
+			plan.Batches[1].CleaningBefore, model.CleaningLight.CleaningDuration())
+	}
+	if plan.Batches[1].CleaningProduct != "A" {
+		t.Fatalf("cleaning product should be A, got %s", plan.Batches[1].CleaningProduct)
+	}
+	// The cleaning step must push the second batch's start later than a direct
+	// handoff would. A no-wait switch would place batch 2 at batch1.start+dur.
+	wantStart := in.StartAt + int64(dur) + int64(model.CleaningLight.CleaningDuration())
+	if plan.Batches[1].PlannedStart != wantStart {
+		t.Fatalf("planned start must include the cleaning gap: got %d want %d",
+			plan.Batches[1].PlannedStart, wantStart)
+	}
+	if plan.Batches[0].PlannedStart != in.StartAt {
+		t.Fatalf("first batch starts at StartAt: got %d want %d",
+			plan.Batches[0].PlannedStart, in.StartAt)
+	}
+}
