@@ -71,10 +71,12 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// A light rinse is still a mandatory, non-zero changeover wait so a finished
+// product is not handed straight to the next one without preparation.
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:

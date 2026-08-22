@@ -85,9 +85,13 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 			cleaningProduct := ""
 			if prevProduct != "" && prevProduct != r.Product {
 				sev := in.Matrix(prevProduct, r.Product)
-				_ = sev
-				cleaningBefore = 0
+				cleaningBefore = sev.CleaningDuration()
 				cleaningProduct = prevProduct
+				// The reactor is occupied by the cleaning step before the next
+				// batch can start, so the timeline cursor must advance across it;
+				// otherwise the next product is scheduled back-to-back and
+				// inherits the prior run's residue (an invalid handoff).
+				cursor += int64(cleaningBefore)
 			}
 			for b := 0; b < it.BatchCount; b++ {
 				seq++
