@@ -1,0 +1,46 @@
+package main
+
+import (
+	"fmt"
+	"task143-batchreactor/internal/campaign"
+	"task143-batchreactor/internal/model"
+)
+
+func rcp(product string) model.Recipe {
+	return model.Recipe{Product: product, T0: 300, DeltaHrx: -1, CA0: 1, Rho: 1, Cp: 1, K0: 1, Ea: 1, Duration: 1000, ThermalLimit: 400}
+}
+
+func vessel() model.Reactor {
+	return model.Reactor{Volume: 1, MaxOperatingTemp: 500, HeatTransferU: 1, HeatTransferArea: 1}
+}
+
+func main() {
+	// A: 1 batch, B: 1 batch, A: 1 batch -> light cleaning A->B (600), medium B->A (1800)
+	in := campaign.PlanInput{
+		Items: []model.CampaignItem{
+			{CampaignID: "c", Seq: 1, RecipeID: "rA", ReactorID: "k1", BatchCount: 1},
+			{CampaignID: "c", Seq: 2, RecipeID: "rB", ReactorID: "k1", BatchCount: 1},
+			{CampaignID: "c", Seq: 3, RecipeID: "rA", ReactorID: "k1", BatchCount: 1},
+		},
+		Recipes:  map[string]model.Recipe{"rA": rcp("A"), "rB": rcp("B")},
+		Reactors: map[string]model.Reactor{"k1": vessel()},
+		Matrix: func(from, to string) model.CleaningSeverity {
+			if from == "A" && to == "B" {
+				return model.CleaningLight // 600
+			}
+			if from == "B" && to == "A" {
+				return model.CleaningMedium // 1800
+			}
+			return model.CleaningNone
+		},
+		StartAt: 1000,
+	}
+	plan, err := campaign.Plan(in)
+	if err != nil {
+		panic(err)
+	}
+	for _, b := range plan.Batches {
+		fmt.Printf("seq=%d recipe=%s start=%d cleaning_before=%.0f cleaning_product=%s\n",
+			b.Seq, b.RecipeID, b.PlannedStart, b.CleaningBefore, b.CleaningProduct)
+	}
+}
