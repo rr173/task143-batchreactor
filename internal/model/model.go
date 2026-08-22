@@ -71,10 +71,13 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// Every non-none severity occupies real reactor time so the changeover pushes
+// the next batch's planned start back; a zero duration would silently collapse
+// the handoff and make downstream start times unreliable.
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:
