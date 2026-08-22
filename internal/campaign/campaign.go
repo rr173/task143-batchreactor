@@ -81,13 +81,19 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 				continue
 			}
 			// Sequence-dependent cleaning (hard scheduling constraint #2).
+			// When the previous batch on this reactor ran a different product,
+			// the cross-contamination matrix decides whether a cleaning step is
+			// inserted and how long it lasts. The cleaning duration is a real
+			// occupancy buffer on the reactor timeline, so it advances the
+			// cursor before the next batch's planned start; a non-zero
+			// severity (including light cleaning) must never collapse to zero.
 			var cleaningBefore float64
 			cleaningProduct := ""
 			if prevProduct != "" && prevProduct != r.Product {
 				sev := in.Matrix(prevProduct, r.Product)
-				_ = sev
-				cleaningBefore = 0
+				cleaningBefore = sev.CleaningDuration()
 				cleaningProduct = prevProduct
+				cursor += int64(cleaningBefore)
 			}
 			for b := 0; b < it.BatchCount; b++ {
 				seq++
