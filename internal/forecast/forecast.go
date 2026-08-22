@@ -146,11 +146,18 @@ func estimatedFinish(in Input, phase model.ForecastPhase) int64 {
 	}
 }
 
+// scheduleSlip returns how late a batch started relative to its planned slot.
+// The slip is always a non-negative duration: a batch that has not started
+// (or started on time) contributes zero, and a batch that started late
+// contributes start - planned. The sign is deliberately the same direction
+// as the EstimatedFinish shift, so the slip duration, the forecast window
+// and the "started after its planned slot" warning all describe one and the
+// same lateness instead of disagreeing.
 func scheduleSlip(in Input, start int64) int64 {
 	if in.Batch.PlannedStart <= 0 || start <= in.Batch.PlannedStart {
 		return 0
 	}
-	return in.Batch.PlannedStart - start
+	return start - in.Batch.PlannedStart
 }
 
 func headroom(recipe model.Recipe, peak float64) float64 {
