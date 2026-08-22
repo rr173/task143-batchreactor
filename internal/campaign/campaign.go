@@ -65,7 +65,10 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 		sort.Slice(items, func(i, j int) bool { return items[i].Seq < items[j].Seq })
 
 		// Track the reactor timeline cursor and the product of the immediately
-		// preceding batch, starting empty (first batch needs no cleaning).
+		// preceding batch, starting empty (first batch needs no cleaning). The
+		// cursor advances past the preceding batch's reaction time and any
+		// changeover cleaning, so the planned start of the next batch visibly
+		// reserves the cleaning window an operator must prepare.
 		var cursor int64 = in.StartAt
 		var prevProduct string
 		var seq int
@@ -80,15 +83,21 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 				plan.Errors = append(plan.Errors, model.PlanError{Seq: it.Seq, RecipeID: it.RecipeID, Reactor: rc.Name, Reason: reactor.IncompatibilityReason(r, rc)})
 				continue
 			}
-			// Sequence-dependent cleaning (hard scheduling constraint #2).
+			// Sequence-dependent cleaning (hard scheduling constraint #2). The
+			// matrix severity decides both whether a cleaning step is inserted and
+			// how long it lasts, so the operator can see the required changeover
+			// preparation directly in the planned start time.
 			var cleaningBefore float64
 			cleaningProduct := ""
 			if prevProduct != "" && prevProduct != r.Product {
 				sev := in.Matrix(prevProduct, r.Product)
-				_ = sev
-				cleaningBefore = 0
+				cleaningBefore = sev.CleaningDuration()
 				cleaningProduct = prevProduct
 			}
+			// The cleaning window precedes this batch, so advance the cursor past
+			// it before stamping the planned start (and again past the reaction
+			// duration for the next batch).
+			cursor += int64(cleaningBefore)
 			for b := 0; b < it.BatchCount; b++ {
 				seq++
 				plan.Batches = append(plan.Batches, model.PlannedBatch{
