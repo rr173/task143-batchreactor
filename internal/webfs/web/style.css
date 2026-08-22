@@ -34,5 +34,6 @@ td.status-maintenance, td.verdict-runaway, td.status-faulted { color: var(--err)
 .card .meta { color: var(--muted); font-size: .78rem; }
 .gantt { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .75rem; white-space: pre; overflow-x: auto; }
 .hidden { display: none; }
+.terminal-note { color: var(--muted); font-size: .78rem; font-style: italic; }
 footer { margin-top: 1.5rem; color: var(--muted); font-size: .75rem; text-align: center; }
 label { display: inline-flex; align-items: center; gap: .25rem; font-size: .82rem; color: var(--muted); }

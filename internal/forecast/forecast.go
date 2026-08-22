@@ -172,6 +172,13 @@ func riskFor(in Input, res model.KineticsResult, f model.BatchForecast) (model.R
 	if in.Batch.Status == model.BatchFaulted {
 		return model.RiskCritical, []string{"batch is faulted: " + in.Batch.FaultReason}
 	}
+	if in.Batch.Status.IsTerminal() {
+		// done / aborted: production is over. Do not surface live thermal risk,
+		// schedule slip or conversion gap as ongoing operational attention for a
+		// batch that can no longer transition — it must not appear as watch or
+		// critical in the forecast or campaign report.
+		return model.RiskNormal, []string{}
+	}
 	if res.Verdict == model.VerdictRunaway {
 		reasons = append(reasons, "thermal classification is runaway")
 	}
@@ -228,10 +235,12 @@ func nextAction(in Input, f model.BatchForecast) string {
 		return "complete discharge and record the release"
 	case model.BatchCleaning:
 		return "complete cleaning before the next product"
-	case model.BatchDone, model.BatchFaulted:
+	case model.BatchDone:
 		return "release the reactor for the next scheduled batch"
+	case model.BatchFaulted:
+		return "review the fault record before releasing the reactor"
 	case model.BatchAborted:
-		return "review abort cause and return reactor to a safe state"
+		return "confirm the abort is resolved and release the reactor"
 	default:
 		return "no lifecycle action is pending"
 	}

@@ -117,7 +117,7 @@ func countStatus(out *model.CampaignAnalytics, status model.BatchStatus) {
 	case model.BatchFaulted:
 		out.FaultCount++
 	case model.BatchAborted:
-		out.ActiveCount++
+		out.AbortedCount++
 	default:
 		out.ActiveCount++
 	}

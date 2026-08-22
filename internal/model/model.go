@@ -145,9 +145,13 @@ const (
 	BatchAborted     BatchStatus = "aborted"
 )
 
-// IsTerminal reports whether the status is a terminal end-state.
+// IsTerminal reports whether the status is a terminal end-state. A batch that
+// has reached done, faulted or aborted no longer accepts lifecycle transitions
+// (an operator cannot re-abort it) and is removed from active operational
+// attention in forecasts and reports. This must agree with the SQL layer, which
+// treats done/faulted/aborted as inactive via "status NOT IN (...)".
 func (s BatchStatus) IsTerminal() bool {
-	return s == BatchDone
+	return s == BatchDone || s == BatchFaulted || s == BatchAborted
 }
 
 // SafetyVerdict is the thermal-safety classification of a batch.

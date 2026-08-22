@@ -149,22 +149,36 @@ function renderBatches(batches) {
     card.innerHTML = `<h3>批次 ${b.id}</h3><div class="meta">反应釜 ${b.reactor_id} · 配方 ${b.recipe_id} · 序 ${b.seq} · 状态 <span class="status-${b.status}">${b.status}</span> · 转化率 ${conv} · 峰值 ${b.peak_temp ? b.peak_temp.toFixed(1) : "—"} K · 判定 ${b.safety_verdict || "—"}${b.fault_reason ? " · " + b.fault_reason : ""}</div>`;
     const adv = document.createElement("div");
     adv.className = "actions";
-    ["charging", "reacting", "cooling", "discharging", "cleaning", "done"].forEach(st => {
-      const btn = document.createElement("button");
-      btn.textContent = "→" + st;
-      btn.addEventListener("click", async () => {
-        try { await api("POST", `/api/batches/${b.id}/advance`, { target: st }); refreshCampaignDetail(); } catch (err) { alertErr(err); }
+    if (isTerminal(b.status)) {
+      const tag = document.createElement("span");
+      tag.className = "meta terminal-note";
+      tag.textContent = "已到终态，无后续操作";
+      adv.appendChild(tag);
+    } else {
+      ["charging", "reacting", "cooling", "discharging", "cleaning", "done"].forEach(st => {
+        const btn = document.createElement("button");
+        btn.textContent = "→" + st;
+        btn.addEventListener("click", async () => {
+          try { await api("POST", `/api/batches/${b.id}/advance`, { target: st }); refreshCampaignDetail(); } catch (err) { alertErr(err); }
+        });
+        adv.appendChild(btn);
       });
-      adv.appendChild(btn);
-    });
-    const ab = document.createElement("button");
-    ab.textContent = "中止";
-    ab.addEventListener("click", async () => { try { await api("POST", `/api/batches/${b.id}/abort`); refreshCampaignDetail(); } catch (err) { alertErr(err); } });
-    adv.appendChild(ab);
+      const ab = document.createElement("button");
+      ab.textContent = "中止";
+      ab.addEventListener("click", async () => { try { await api("POST", `/api/batches/${b.id}/abort`); refreshCampaignDetail(); } catch (err) { alertErr(err); } });
+      adv.appendChild(ab);
+    }
     card.appendChild(adv);
     list.appendChild(card);
   });
 }
+
+// isTerminal mirrors model.BatchStatus.IsTerminal so the running view hides
+// transition buttons for batches that have reached an end-state (done /
+// faulted / aborted): offering advance or abort actions on a terminal batch
+// would surface an inappropriate next action for a batch that can no longer
+// transition.
+function isTerminal(status) { return status === "done" || status === "faulted" || status === "aborted"; }
 
 async function refreshReport() {
   if (!currentCampaign) return alert("先选择活动");
