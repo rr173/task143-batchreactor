@@ -81,15 +81,23 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 				continue
 			}
 			// Sequence-dependent cleaning (hard scheduling constraint #2).
+			// The cleaning wait is assessed on the immediately-preceding batch's
+			// product and reserved in the timeline so subsequent batches are not
+			// scheduled into the changeover window.
 			var cleaningBefore float64
 			cleaningProduct := ""
 			if prevProduct != "" && prevProduct != r.Product {
 				sev := in.Matrix(prevProduct, r.Product)
-				_ = sev
-				cleaningBefore = 0
+				cleaningBefore = sev.CleaningDuration()
 				cleaningProduct = prevProduct
 			}
 			for b := 0; b < it.BatchCount; b++ {
+				// Reserve the changeover wait before the first batch of a new
+				// product: the cursor carries the cleaning gap forward so the
+				// planned start reflects the wait, not a premature slot.
+				if cleaningBefore > 0 {
+					cursor += int64(cleaningBefore)
+				}
 				seq++
 				plan.Batches = append(plan.Batches, model.PlannedBatch{
 					ReactorID: rid, RecipeID: it.RecipeID, Seq: seq,
