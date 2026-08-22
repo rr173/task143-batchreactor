@@ -71,10 +71,13 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// Light cleaning is a real cross-contamination step: it is shorter than medium
+// or heavy but never zero, so a constrained changeover always shows a gap in
+// the plan rather than reading as a seamless handoff.
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:

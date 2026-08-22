@@ -81,13 +81,21 @@ func Plan(in PlanInput) (model.CampaignPlan, error) {
 				continue
 			}
 			// Sequence-dependent cleaning (hard scheduling constraint #2).
+			// The cross-contamination matrix decides whether a cleaning step is
+			// inserted between two different products on the same reactor and
+			// how long it lasts. The cleaning is a real changeover: the reactor
+			// is busy for that duration, so the cursor advances past it before
+			// the next batch's planned start, and the cleaning step (duration
+			// and the source product) is recorded on that batch. This keeps the
+			// process boundary visible in the plan instead of collapsing a
+			// constrained changeover into a seamless handoff.
 			var cleaningBefore float64
 			cleaningProduct := ""
 			if prevProduct != "" && prevProduct != r.Product {
 				sev := in.Matrix(prevProduct, r.Product)
-				_ = sev
-				cleaningBefore = 0
+				cleaningBefore = sev.CleaningDuration()
 				cleaningProduct = prevProduct
+				cursor += int64(cleaningBefore)
 			}
 			for b := 0; b < it.BatchCount; b++ {
 				seq++
