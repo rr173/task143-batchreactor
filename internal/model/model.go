@@ -71,10 +71,12 @@ const (
 )
 
 // CleaningDuration returns the cleaning step duration (seconds) for a severity.
+// None means no cleaning; light/medium/heavy are the graded changeover times a
+// real campaign must honour between different products on the same reactor.
 func (s CleaningSeverity) CleaningDuration() float64 {
 	switch s {
 	case CleaningLight:
-		return 0
+		return 600
 	case CleaningMedium:
 		return 1800
 	case CleaningHeavy:
